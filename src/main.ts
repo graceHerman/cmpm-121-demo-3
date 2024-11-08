@@ -5,7 +5,7 @@ import leaflet from "leaflet"; // @deno-types="npm:@types/leaflet@^1.9.14"
 // Import styles
 import "leaflet/dist/leaflet.css";
 import "./style.css";
-import "./leafletWorkaround.ts"; // Fix for missing marker images
+import "./leafletWorkaround.ts";
 import luck from "./luck.ts"; // Deterministic random number generator
 
 // Game configuration and constants
@@ -57,19 +57,16 @@ document.body.appendChild(demoButton);*/
 
 // Function to convert latitude-longitude to grid cell coordinates
 function latLngToGridCoords(lat: number, lng: number): GridCell {
-  const i = Math.floor((lat - config.origin.lat) / config.tileSize); // latitude = i
-  const j = Math.floor((lng - config.origin.lng) / config.tileSize); // longitude = j
-
+  const i = Math.floor((lat - config.origin.lat) / config.tileSize);
+  const j = Math.floor((lng - config.origin.lng) / config.tileSize);
   const key = `${i},${j}`;
 
-  // Make Flyweight Pattern
-  // Check if the grid cell already exists in the cache
-  // If it doesn't exist, create a new grid cell and cache it
+  // Use Flyweight Pattern: check if the cell exists; if not, cache it
   if (!gridCellCache.has(key)) {
     gridCellCache.set(key, { i, j });
   }
 
-  return gridCellCache.get(key)!; // Return the shared/newly created grid cell
+  return gridCellCache.get(key)!; // Return the cached/newly created cell
 }
 
 // Initializes the map view and settings
@@ -93,7 +90,7 @@ function initializeMap() {
   return mapInstance;
 }
 
-// Adds the player marker to the map and binds a tooltip
+// Adds player marker to the map and binds a tooltip
 function initializePlayerMarker(
   player: { marker: leaflet.Marker; coinsCollected: number },
 ) {
@@ -118,8 +115,7 @@ function updateCacheValueDisplay(
   }
 }
 
-// Function to generate caches around the player's location based on the probability configuration
-// try to use cell's i and j later
+// Function to generate caches around the player's location based on probability
 function generateCachesAroundPlayer() {
   for (let i = -config.neighborhoodRange; i <= config.neighborhoodRange; i++) {
     for (
@@ -144,7 +140,6 @@ function spawnCache(row: number, col: number) {
     origin.lng + col * config.tileSize,
   );
 
-  // Have grid coordinates from latLngToGridCoords
   const { i, j } = gridCell;
 
   const cacheBounds = leaflet.latLngBounds(
@@ -211,3 +206,38 @@ function spawnCache(row: number, col: number) {
     return popupContent;
   });
 }
+
+// Function to update the player's location
+function updatePlayerLocation(lat: number, lng: number) {
+  player.marker.setLatLng(leaflet.latLng(lat, lng));
+  map.setView(leaflet.latLng(lat, lng), config.initialZoom);
+}
+
+// Event listeners for movement buttons
+// Move north
+document.getElementById("north")?.addEventListener("click", () => {
+  const currentLatLng = player.marker.getLatLng();
+  const newLat = currentLatLng.lat + config.tileSize;
+  updatePlayerLocation(newLat, currentLatLng.lng);
+});
+
+// Move south
+document.getElementById("south")?.addEventListener("click", () => {
+  const currentLatLng = player.marker.getLatLng();
+  const newLat = currentLatLng.lat - config.tileSize;
+  updatePlayerLocation(newLat, currentLatLng.lng);
+});
+
+// Move west
+document.getElementById("west")?.addEventListener("click", () => {
+  const currentLatLng = player.marker.getLatLng();
+  const newLng = currentLatLng.lng - config.tileSize;
+  updatePlayerLocation(currentLatLng.lat, newLng);
+});
+
+// Move east
+document.getElementById("east")?.addEventListener("click", () => {
+  const currentLatLng = player.marker.getLatLng();
+  const newLng = currentLatLng.lng + config.tileSize; // Move east
+  updatePlayerLocation(currentLatLng.lat, newLng);
+});
