@@ -39,6 +39,30 @@ interface Coin {
   serial: number;
 }
 
+interface CacheMemento {
+  gridCellKey: string; // Unique identifier for the cache (e.g., coordinates)
+  cacheValue: number; // Number of coins in the cache
+}
+
+// Manager for handling cache mementos (mementos will be stored here)
+const cacheMementoManager: Map<string, CacheMemento> = new Map();
+
+// Function to save the state of a cache
+function saveCacheState(i: number, j: number, cacheValue: number): void {
+  const gridCellKey = `${i},${j}`;
+  cacheMementoManager.set(gridCellKey, {
+    gridCellKey,
+    cacheValue,
+  });
+}
+
+// Function to restore the state of a cache
+function restoreCacheState(i: number, j: number): number {
+  const gridCellKey = `${i},${j}`;
+  const memento = cacheMementoManager.get(gridCellKey);
+  return memento ? memento.cacheValue : 0; // Default to 0 if no state is saved
+}
+
 // Initialize the map
 const map = initializeMap();
 
@@ -135,7 +159,7 @@ function generateCachesAroundPlayer() {
 
       // Determine if a cache should spawn at this location
       if (luck([lat, lng].toString()) < config.cacheProbability) {
-        spawnCache(lat, lng);
+        spawnCache(lat, lng); // Restore cache state if it's within range
       }
     }
   }
@@ -155,13 +179,26 @@ function spawnCache(lat: number, lng: number) {
   cacheRect.addTo(map);
   activeCaches.add(cacheRect);
 
+  // Retrieve the cache value from the saved state, if available
+  let cacheValue = restoreCacheState(i, j);
+
+  // If no value exists in the memento, generate a new one
+  if (cacheValue === 0) {
+    cacheValue = Math.floor(luck([i, j, "value"].toString()) * 100);
+    console.log(`Generated new cache at (${i}, ${j}) with value ${cacheValue}`);
+  } else {
+    console.log(`Restored cache at (${i}, ${j}) with value ${cacheValue}`);
+  }
+
   // Initialize cache coins with unique identities (Flyweight pattern)
-  let cacheValue = Math.floor(luck([i, j, "value"].toString()) * 100);
   const coins = Array.from({ length: cacheValue }, (_, serial) => ({
     i,
     j,
     serial,
   }));
+
+  // Save the state after initializing the cache
+  saveCacheState(i, j, cacheValue);
 
   // Bind a popup to the cache with collect and deposit functionality
   cacheRect.bindPopup(() => {
@@ -185,6 +222,8 @@ function spawnCache(lat: number, lng: number) {
         updateCacheValueDisplay(popupContent, cacheValue);
 
         console.log(`Collected coin:`, collectedCoin);
+        // Save updated cache state
+        saveCacheState(i, j, cacheValue);
       }
     });
 
@@ -202,6 +241,8 @@ function spawnCache(lat: number, lng: number) {
         updateCacheValueDisplay(popupContent, cacheValue);
 
         console.log(`Deposited coin:`, depositCoin);
+        // Save updated cache state
+        saveCacheState(i, j, cacheValue);
       }
     });
 
