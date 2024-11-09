@@ -9,6 +9,9 @@ import "./leafletWorkaround.ts";
 import luck from "./luck.ts"; // Deterministic random number generator
 
 // Game configuration and constants
+// neighborhoodRange = Number of tiles to generate
+// cacheProbability = probability of a cache spawning ina  tile
+// startingLocation = location of Oake's College
 const config = {
   initialZoom: 19,
   tileSize: 1e-4,
@@ -20,6 +23,9 @@ const config = {
 
 // Cache for grid cells for Flyweight pattern
 const gridCellCache = new Map<string, GridCell>();
+
+// Set of all active caches on the map
+const activeCaches = new Set<leaflet.Rectangle>();
 
 // Define interfaces
 interface GridCell {
@@ -43,17 +49,10 @@ const player = {
 };
 
 // Set up player marker and display
+// And generate initial caches around the player's starting location
 initializePlayerMarker(player);
 updateCoinsDisplay(player.coinsCollected);
-
-// Generate caches around the player's location
 generateCachesAroundPlayer();
-
-/*// Create a sample button to demonstrate functionality in `main.ts`
-const demoButton = document.createElement("button");
-demoButton.innerHTML = "Click here";
-demoButton.addEventListener("click", () => alert("You clicked the button!"));
-document.body.appendChild(demoButton);*/
 
 // Function to convert latitude-longitude to grid cell coordinates
 function latLngToGridCoords(lat: number, lng: number): GridCell {
@@ -61,7 +60,8 @@ function latLngToGridCoords(lat: number, lng: number): GridCell {
   const j = Math.floor((lng - config.origin.lng) / config.tileSize);
   const key = `${i},${j}`;
 
-  // Use Flyweight Pattern: check if the cell exists; if not, cache it
+  // Use Flyweight Pattern, check if the cell exists
+  // if not, cache it
   if (!gridCellCache.has(key)) {
     gridCellCache.set(key, { i, j });
   }
@@ -90,15 +90,15 @@ function initializeMap() {
   return mapInstance;
 }
 
-// Adds player marker to the map and binds a tooltip
+// Adds the player marker to the map and binds a tooltip
 function initializePlayerMarker(
   player: { marker: leaflet.Marker; coinsCollected: number },
 ) {
-  player.marker.bindTooltip("Player Location");
+  player.marker.bindTooltip("Player's here :D");
   player.marker.addTo(map);
 }
 
-// Updates the display for the player's coin count
+// Updates the display for player's coin count
 function updateCoinsDisplay(coins: number) {
   const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
   statusPanel.innerHTML = `${coins} coins collected`;
@@ -115,43 +115,45 @@ function updateCacheValueDisplay(
   }
 }
 
-// Function to generate caches around the player's location based on probability
+// Function to generate caches around the player's location based on proximity
 function generateCachesAroundPlayer() {
+  const { lat: playerLat, lng: playerLng } = player.marker.getLatLng();
+
+  // Remove all previous caches from the map
+  activeCaches.forEach((cache) => cache.remove());
+  activeCaches.clear();
+
+  // Generate new caches around the player based on neighborhood range
   for (let i = -config.neighborhoodRange; i <= config.neighborhoodRange; i++) {
     for (
       let j = -config.neighborhoodRange;
       j <= config.neighborhoodRange;
       j++
     ) {
-      if (luck([i, j].toString()) < config.cacheProbability) {
-        spawnCache(i, j);
+      const lat = playerLat + i * config.tileSize;
+      const lng = playerLng + j * config.tileSize;
+
+      // Determine if a cache should spawn at this location
+      if (luck([lat, lng].toString()) < config.cacheProbability) {
+        spawnCache(lat, lng);
       }
     }
   }
 }
 
-// Create a cache at a specific location and binds interactive popups
-function spawnCache(row: number, col: number) {
-  const origin = config.startLocation;
-
-  // Use latLngToGridCoords to get the correct grid cell
-  const gridCell = latLngToGridCoords(
-    origin.lat + row * config.tileSize,
-    origin.lng + col * config.tileSize,
-  );
-
+// Create a cache at a specific location and bind interactive popups
+function spawnCache(lat: number, lng: number) {
+  const gridCell = latLngToGridCoords(lat, lng);
   const { i, j } = gridCell;
 
   const cacheBounds = leaflet.latLngBounds(
-    [origin.lat + row * config.tileSize, origin.lng + col * config.tileSize],
-    [
-      origin.lat + (row + 1) * config.tileSize,
-      origin.lng + (col + 1) * config.tileSize,
-    ],
+    [lat, lng],
+    [lat + config.tileSize, lng + config.tileSize],
   );
 
   const cacheRect = leaflet.rectangle(cacheBounds);
   cacheRect.addTo(map);
+  activeCaches.add(cacheRect);
 
   // Initialize cache coins with unique identities (Flyweight pattern)
   let cacheValue = Math.floor(luck([i, j, "value"].toString()) * 100);
@@ -211,24 +213,25 @@ function spawnCache(row: number, col: number) {
 function updatePlayerLocation(lat: number, lng: number) {
   player.marker.setLatLng(leaflet.latLng(lat, lng));
   map.setView(leaflet.latLng(lat, lng), config.initialZoom);
+  generateCachesAroundPlayer(); // Regenerate caches around the new location
 }
 
 // Event listeners for movement buttons
-// Move north
+// Move North
 document.getElementById("north")?.addEventListener("click", () => {
   const currentLatLng = player.marker.getLatLng();
   const newLat = currentLatLng.lat + config.tileSize;
   updatePlayerLocation(newLat, currentLatLng.lng);
 });
 
-// Move south
+// Move South
 document.getElementById("south")?.addEventListener("click", () => {
   const currentLatLng = player.marker.getLatLng();
   const newLat = currentLatLng.lat - config.tileSize;
   updatePlayerLocation(newLat, currentLatLng.lng);
 });
 
-// Move west
+// Move West
 document.getElementById("west")?.addEventListener("click", () => {
   const currentLatLng = player.marker.getLatLng();
   const newLng = currentLatLng.lng - config.tileSize;
@@ -238,6 +241,6 @@ document.getElementById("west")?.addEventListener("click", () => {
 // Move east
 document.getElementById("east")?.addEventListener("click", () => {
   const currentLatLng = player.marker.getLatLng();
-  const newLng = currentLatLng.lng + config.tileSize; // Move east
+  const newLng = currentLatLng.lng + config.tileSize;
   updatePlayerLocation(currentLatLng.lat, newLng);
 });
