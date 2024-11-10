@@ -39,9 +39,11 @@ interface Coin {
   serial: number;
 }
 
+// gridCellKey = Unique identifier for the cache (e.g., coordinates)
+// cacheValue = Number of coins in the cache
 interface CacheMemento {
-  gridCellKey: string; // Unique identifier for the cache (e.g., coordinates)
-  cacheValue: number; // Number of coins in the cache
+  gridCellKey: string;
+  cacheValue: number;
 }
 
 // Manager for handling cache mementos (mementos will be stored here)
@@ -60,7 +62,9 @@ function saveCacheState(i: number, j: number, cacheValue: number): void {
 function restoreCacheState(i: number, j: number): number {
   const gridCellKey = `${i},${j}`;
   const memento = cacheMementoManager.get(gridCellKey);
-  return memento ? memento.cacheValue : 0; // Default to 0 if no state is saved
+
+  // Default to 0 if no state is saved
+  return memento ? memento.cacheValue : 0;
 }
 
 // Initialize the map
@@ -90,7 +94,8 @@ function latLngToGridCoords(lat: number, lng: number): GridCell {
     gridCellCache.set(key, { i, j });
   }
 
-  return gridCellCache.get(key)!; // Return the cached/newly created cell
+  // Return the cached/newly created cell
+  return gridCellCache.get(key)!;
 }
 
 // Initializes the map view and settings
@@ -158,8 +163,9 @@ function generateCachesAroundPlayer() {
       const lng = playerLng + j * config.tileSize;
 
       // Determine if a cache should spawn at this location
+      // Restore cache state if it's within range
       if (luck([lat, lng].toString()) < config.cacheProbability) {
-        spawnCache(lat, lng); // Restore cache state if it's within range
+        spawnCache(lat, lng);
       }
     }
   }
