@@ -81,7 +81,10 @@ const player = {
 initializePlayerMarker(player);
 updateCoinsDisplay(player.coinsCollected);
 generateCachesAroundPlayer();
-//loadGameState();
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadGameState();
+});
 
 // Function to convert latitude-longitude to grid cell coordinates
 function latLngToGridCoords(lat: number, lng: number): GridCell {
@@ -291,21 +294,21 @@ const movementHistory: leaflet.LatLng[] = [];
 const movementPolyline = leaflet.polyline(movementHistory, { color: "blue" })
   .addTo(map);
 
-/*// Function that loads game state from previous session if the player closed the game's browser window
+// Function that loads game state from previous session if the player closed the game's browser window
 function loadGameState() {
-  const savedState = localStorage.getItem('gameState');
-  if (savedState) {
-    try {
-      const gameState = JSON.parse(savedState);
-      // Apply saved state to game elements
-      player.marker.setLatLng(gameState.position);
-      player.coinsCollected = gameState.coinsCollected;
-      console.log('Game state loaded:', gameState);
-    } catch (error) {
-      console.error('Error loading game state:', error);
-    }
+  console.log("Trying to load game state...");
+  const savedData = localStorage.getItem("gameState");
+  if (savedData) {
+    const gameState = JSON.parse(savedData);
+    console.log("Game state loaded:", gameState);
+    // Restore game state logic here
+  } else {
+    console.log("No saved game state found.");
   }
-}*/
+}
+
+// Manually load the game state when needed
+loadGameState();
 
 // Event listeners for movement buttons
 // Move North button
@@ -337,8 +340,19 @@ document.getElementById("east")?.addEventListener("click", () => {
 });
 
 // Button for automatic position updating
-document.getElementById("automatice")?.addEventListener("click", () => {
+document.getElementById("automatic")?.addEventListener("click", () => {
   // ...
+  const interval = setInterval(() => {
+    const currentLatLng = player.marker.getLatLng();
+    const newLat = currentLatLng.lat +
+      (Math.random() > 0.5 ? config.tileSize : -config.tileSize);
+    const newLng = currentLatLng.lng +
+      (Math.random() > 0.5 ? config.tileSize : -config.tileSize);
+    updatePlayerLocation(newLat, newLng);
+  }, 1000); // Move every second
+
+  // You can stop the movement after a set period or on another condition:
+  setTimeout(() => clearInterval(interval), 10000); // Stop after 10 seconds
 });
 
 // Button for reseting the game's state, returning all coins to home caches
