@@ -6,3 +6,4 @@ with something more descriptive. It sure would be embarrassing if they forgot to
 do that...
 
 This program allows the user to grab and deposit cache points/coins at random spaces on the map as well as moving along the map
+Everytime the player walks, the cache locations generate randomly. Cache locations are suppose to be resotred when the player comes back to previous location. 

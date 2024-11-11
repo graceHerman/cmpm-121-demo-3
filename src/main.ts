@@ -49,7 +49,7 @@ interface CacheMemento {
 // Manager for handling cache mementos (mementos will be stored here)
 const cacheMementoManager: Map<string, CacheMemento> = new Map();
 
-// Function to save the state of a cache
+// To save the state of a cache
 function saveCacheState(i: number, j: number, cacheValue: number): void {
   const gridCellKey = `${i},${j}`;
   cacheMementoManager.set(gridCellKey, {
@@ -58,7 +58,7 @@ function saveCacheState(i: number, j: number, cacheValue: number): void {
   });
 }
 
-// Function to restore the state of a cache
+// To restore the state of a cache
 function restoreCacheState(i: number, j: number): number {
   const gridCellKey = `${i},${j}`;
   const memento = cacheMementoManager.get(gridCellKey);
@@ -81,6 +81,7 @@ const player = {
 initializePlayerMarker(player);
 updateCoinsDisplay(player.coinsCollected);
 generateCachesAroundPlayer();
+//loadGameState();
 
 // Function to convert latitude-longitude to grid cell coordinates
 function latLngToGridCoords(lat: number, lng: number): GridCell {
@@ -256,38 +257,103 @@ function spawnCache(lat: number, lng: number) {
   });
 }
 
+// Function to save the game state into a local storage
+function saveGameState() {
+  const gameState = {
+    position: player.marker.getLatLng(),
+    coinsCollected: player.coinsCollected,
+    cacheStates: Array.from(cacheMementoManager.entries()),
+  };
+  localStorage.setItem("gameState", JSON.stringify(gameState));
+  console.log("Game state saved:", gameState); // Log for debugging
+}
+
 // Function to update the player's location
 function updatePlayerLocation(lat: number, lng: number) {
   player.marker.setLatLng(leaflet.latLng(lat, lng));
   map.setView(leaflet.latLng(lat, lng), config.initialZoom);
   generateCachesAroundPlayer(); // Regenerate caches around the new location
+
+  const newLocation = leaflet.latLng(lat, lng);
+  player.marker.setLatLng(newLocation);
+  map.setView(newLocation, config.initialZoom);
+
+  // Update movement history, polyline path and refresh caches based on new position
+  movementHistory.push(newLocation);
+  movementPolyline.setLatLngs(movementHistory);
+  generateCachesAroundPlayer();
+
+  saveGameState(); // Save the updated game state
 }
 
+// polyline to render player's movement history
+const movementHistory: leaflet.LatLng[] = [];
+const movementPolyline = leaflet.polyline(movementHistory, { color: "blue" })
+  .addTo(map);
+
+/*// Function that loads game state from previous session if the player closed the game's browser window
+function loadGameState() {
+  const savedState = localStorage.getItem('gameState');
+  if (savedState) {
+    try {
+      const gameState = JSON.parse(savedState);
+      // Apply saved state to game elements
+      player.marker.setLatLng(gameState.position);
+      player.coinsCollected = gameState.coinsCollected;
+      console.log('Game state loaded:', gameState);
+    } catch (error) {
+      console.error('Error loading game state:', error);
+    }
+  }
+}*/
+
 // Event listeners for movement buttons
-// Move North
+// Move North button
 document.getElementById("north")?.addEventListener("click", () => {
   const currentLatLng = player.marker.getLatLng();
   const newLat = currentLatLng.lat + config.tileSize;
   updatePlayerLocation(newLat, currentLatLng.lng);
 });
 
-// Move South
+// Move South button
 document.getElementById("south")?.addEventListener("click", () => {
   const currentLatLng = player.marker.getLatLng();
   const newLat = currentLatLng.lat - config.tileSize;
   updatePlayerLocation(newLat, currentLatLng.lng);
 });
 
-// Move West
+// Move West button
 document.getElementById("west")?.addEventListener("click", () => {
   const currentLatLng = player.marker.getLatLng();
   const newLng = currentLatLng.lng - config.tileSize;
   updatePlayerLocation(currentLatLng.lat, newLng);
 });
 
-// Move east
+// Move east button
 document.getElementById("east")?.addEventListener("click", () => {
   const currentLatLng = player.marker.getLatLng();
   const newLng = currentLatLng.lng + config.tileSize;
   updatePlayerLocation(currentLatLng.lat, newLng);
+});
+
+// Button for automatic position updating
+document.getElementById("automatice")?.addEventListener("click", () => {
+  // ...
+});
+
+// Button for reseting the game's state, returning all coins to home caches
+// and erasing location history
+document.getElementById("reset")?.addEventListener("click", () => {
+  // Clear the game state
+  localStorage.clear();
+  player.coinsCollected = 0;
+  updateCoinsDisplay(player.coinsCollected);
+  movementHistory.length = 0;
+  movementPolyline.setLatLngs(movementHistory);
+  cacheMementoManager.clear();
+
+  // Reset player position to starting location
+  updatePlayerLocation(config.startLocation.lat, config.startLocation.lng);
+
+  console.log("Game state reset.");
 });
