@@ -300,8 +300,27 @@ function loadGameState() {
   const savedData = localStorage.getItem("gameState");
   if (savedData) {
     const gameState = JSON.parse(savedData);
+
+    // Restore player's position and coins collected
+    player.marker.setLatLng(gameState.position);
+    player.coinsCollected = gameState.coinsCollected;
+    updateCoinsDisplay(player.coinsCollected);
+
+    // Restore cache states
+    gameState.cacheStates.forEach(
+      ([gridCellKey, cacheMemento]: [string, CacheMemento]) => {
+        cacheMementoManager.set(gridCellKey, cacheMemento);
+      },
+    );
+
+    // Update movement history and map view
+    movementHistory.push(gameState.position);
+    movementPolyline.setLatLngs(movementHistory);
+    map.setView(gameState.position, config.initialZoom);
+
+    // Generate caches around restored player position
+    generateCachesAroundPlayer();
     console.log("Game state loaded:", gameState);
-    // Restore game state logic here
   } else {
     console.log("No saved game state found.");
   }
@@ -341,18 +360,17 @@ document.getElementById("east")?.addEventListener("click", () => {
 
 // Button for automatic position updating
 document.getElementById("automatic")?.addEventListener("click", () => {
-  // ...
   const interval = setInterval(() => {
     const currentLatLng = player.marker.getLatLng();
     const newLat = currentLatLng.lat +
-      (Math.random() > 0.5 ? config.tileSize : -config.tileSize);
+      (Math.random() > 0.2 ? config.tileSize : -config.tileSize);
     const newLng = currentLatLng.lng +
-      (Math.random() > 0.5 ? config.tileSize : -config.tileSize);
+      (Math.random() > 0.2 ? config.tileSize : -config.tileSize);
     updatePlayerLocation(newLat, newLng);
   }, 1000); // Move every second
 
-  // You can stop the movement after a set period or on another condition:
-  setTimeout(() => clearInterval(interval), 10000); // Stop after 10 seconds
+  // Stop after 10 seconds
+  setTimeout(() => clearInterval(interval), 10000);
 });
 
 // Button for reseting the game's state, returning all coins to home caches
@@ -369,5 +387,7 @@ document.getElementById("reset")?.addEventListener("click", () => {
   // Reset player position to starting location
   updatePlayerLocation(config.startLocation.lat, config.startLocation.lng);
 
-  console.log("Game state reset.");
+  // Clear and regenerate caches around the starting location
+  generateCachesAroundPlayer();
+  console.log("Game state has been reset.");
 });
