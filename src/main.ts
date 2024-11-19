@@ -139,7 +139,7 @@ function updateCoinsDisplay(coins: number) {
   statusPanel.innerHTML = `${coins} coins collected`;
 }
 
-// Updates the displayed cache value after a coin is collected or deposited
+/*// Updates the displayed cache value after a coin is collected or deposited
 function updateCacheValueDisplay(
   popupContent: HTMLElement,
   newCacheValue: number,
@@ -148,7 +148,7 @@ function updateCacheValueDisplay(
   if (cacheValueSpan) {
     cacheValueSpan.textContent = newCacheValue.toString();
   }
-}
+}*/
 
 // Function to generate caches around the player's location based on proximity
 function generateCachesAroundPlayer() {
@@ -215,11 +215,55 @@ function spawnCache(lat: number, lng: number) {
   // Bind a popup to the cache with collect and deposit functionality
   cacheRect.bindPopup(() => {
     const popupContent = document.createElement("div");
+
+    // Helper to render the coin list with a cutoff at 20 coins
+    const renderCoinList = () => {
+      const displayedCoins = coins.slice(1, 21); // Show only the first 20 coins
+      const additionalCoins = coins.length - displayedCoins.length;
+
+      let coinListHtml = displayedCoins
+        .map((coin) =>
+          `<div id="coin-${coin.serial}">Coin ${coin.serial} at (${coin.i}, ${coin.j})</div>`
+        )
+        .join("");
+
+      // Add a message if there are additional coins
+      if (additionalCoins > 0) {
+        coinListHtml += `<div>...and ${additionalCoins} more coins.</div>`;
+      }
+
+      return coinListHtml;
+    };
+
+    // Initial popup content with the coin list
     popupContent.innerHTML = `
-      <div>Cache at (${i},${j}): <span id="value">${cacheValue}</span> coins.</div>
+      <div>
+        Cache at (${i}, ${j}): <span id="value">${cacheValue}</span> coins.
+      </div>
+      <div id="coin-list">
+        ${renderCoinList()}
+      </div>
       <button id="collect">Collect</button>
       <button id="deposit">Deposit</button>
     `;
+
+    // References to the dynamic elements
+    const valueElement = popupContent.querySelector<HTMLSpanElement>("#value");
+    const coinListElement = popupContent.querySelector<HTMLDivElement>(
+      "#coin-list",
+    );
+
+    // Function to update the coin list display
+    const updateCoinListDisplay = () => {
+      if (coinListElement) {
+        coinListElement.innerHTML = renderCoinList();
+      }
+    };
+
+    // Function to update cache value display
+    const updateCacheValueDisplay = (value: number) => {
+      if (valueElement) valueElement.textContent = value.toString();
+    };
 
     // Handle collect button click to gather coins from the cache
     const collectButton = popupContent.querySelector<HTMLButtonElement>(
@@ -228,14 +272,19 @@ function spawnCache(lat: number, lng: number) {
     collectButton.addEventListener("click", () => {
       if (cacheValue > 0) {
         cacheValue--;
-        const collectedCoin = coins.pop();
-        player.coinsCollected++;
-        updateCoinsDisplay(player.coinsCollected);
-        updateCacheValueDisplay(popupContent, cacheValue);
+        const collectedCoin = coins.shift(); // Remove the first coin (top coin)
+        if (collectedCoin) {
+          player.coinsCollected++;
+          updateCoinsDisplay(player.coinsCollected);
+          updateCacheValueDisplay(cacheValue);
 
-        console.log(`Collected coin:`, collectedCoin);
-        // Save updated cache state
-        saveCacheState(i, j, cacheValue);
+          // Update coin list in the UI
+          updateCoinListDisplay();
+
+          console.log(`Collected coin:`, collectedCoin);
+          // Save updated cache state
+          saveCacheState(i, j, cacheValue);
+        }
       }
     });
 
@@ -246,11 +295,14 @@ function spawnCache(lat: number, lng: number) {
     depositButton.addEventListener("click", () => {
       if (player.coinsCollected > 0) {
         const depositCoin = { i, j, serial: cacheValue };
-        coins.push(depositCoin);
+        coins.push(depositCoin); // Add coin to the end of the array
         cacheValue++;
         player.coinsCollected--;
         updateCoinsDisplay(player.coinsCollected);
-        updateCacheValueDisplay(popupContent, cacheValue);
+        updateCacheValueDisplay(cacheValue);
+
+        // Update coin list in the UI
+        updateCoinListDisplay();
 
         console.log(`Deposited coin:`, depositCoin);
         // Save updated cache state
@@ -394,8 +446,7 @@ document.getElementById("reset")?.addEventListener("click", () => {
   console.log("Game state has been reset.");
 });
 
-// Update in the future: fix the fact that the game cannot save the player's coins
-// when the player collects/deposits coins standing still
-// the save works when the player is moving
-// so the player needs to move in order to save their coins
-// Also try to import the board.ts
+// IMPORTANT!
+// I didn't know whether we had to import the board.ts for this demo or not
+// I didn't use it so this file does not have the board.ts being used
+// I'll try adding it this week
