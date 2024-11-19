@@ -8,6 +8,8 @@ import "./style.css";
 import "./leafletWorkaround.ts";
 import luck from "./luck.ts"; // Deterministic random number generator
 
+import "./board.ts";
+
 // Game configuration and constants
 // neighborhoodRange = Number of tiles to generate
 // cacheProbability = probability of a cache spawning ina  tile
@@ -391,3 +393,9 @@ document.getElementById("reset")?.addEventListener("click", () => {
   generateCachesAroundPlayer();
   console.log("Game state has been reset.");
 });
+
+// Update in the future: fix the fact that the game cannot save the player's coins
+// when the player collects/deposits coins standing still
+// the save works when the player is moving
+// so the player needs to move in order to save their coins
+// Also try to import the board.ts
