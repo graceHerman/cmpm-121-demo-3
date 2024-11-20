@@ -140,17 +140,6 @@ function updateCoinsDisplay(coins: number) {
   statusPanel.innerHTML = `${coins} coins collected`;
 }
 
-/*// Updates the displayed cache value after a coin is collected or deposited
-function updateCacheValueDisplay(
-  popupContent: HTMLElement,
-  newCacheValue: number,
-) {
-  const cacheValueSpan = popupContent.querySelector<HTMLSpanElement>("#value");
-  if (cacheValueSpan) {
-    cacheValueSpan.textContent = newCacheValue.toString();
-  }
-}*/
-
 // Function to generate caches around the player's location based on proximity
 function generateCachesAroundPlayer() {
   const { lat: playerLat, lng: playerLng } = player.marker.getLatLng();
@@ -276,6 +265,7 @@ function spawnCache(lat: number, lng: number) {
         const collectedCoin = coins.shift(); // Remove the first coin (top coin)
         if (collectedCoin) {
           player.coinsCollected++;
+
           // Add coin to inventory with cache location
           player.inventory.push({
             serial: collectedCoin.serial,
@@ -308,6 +298,10 @@ function spawnCache(lat: number, lng: number) {
         player.coinsCollected--;
         updateCoinsDisplay(player.coinsCollected);
         updateCacheValueDisplay(cacheValue);
+
+        // remove coin to inventory with cache location
+        player.inventory.pop();
+        updateInventoryDisplay();
 
         // Update coin list in the UI
         updateCoinListDisplay();
