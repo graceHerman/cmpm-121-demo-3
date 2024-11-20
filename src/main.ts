@@ -339,6 +339,7 @@ function saveGameState() {
   const gameState = {
     position: player.marker.getLatLng(),
     coinsCollected: player.coinsCollected,
+    inventory: player.inventory, // Save inventory to localStorage
     cacheStates: Array.from(cacheMementoManager.entries()),
   };
   localStorage.setItem("gameState", JSON.stringify(gameState));
@@ -375,10 +376,17 @@ function loadGameState() {
   if (savedData) {
     const gameState = JSON.parse(savedData);
 
-    // Restore player's position and coins collected
+    // Restore player's position
     player.marker.setLatLng(gameState.position);
+    map.setView(gameState.position, config.initialZoom);
+
+    // Restore coins collected
     player.coinsCollected = gameState.coinsCollected;
     updateCoinsDisplay(player.coinsCollected);
+
+    // Restore player's inventory
+    player.inventory = gameState.inventory || [];
+    updateInventoryDisplay(); // Ensure the inventory display is updated
 
     // Restore cache states
     gameState.cacheStates.forEach(
@@ -387,14 +395,9 @@ function loadGameState() {
       },
     );
 
-    // Update movement history and map view
-    movementHistory.push(gameState.position);
-    movementPolyline.setLatLngs(movementHistory);
-    map.setView(gameState.position, config.initialZoom);
-
-    // Generate caches around restored player position
+    // Re-generate caches on the map based on the restored state
     generateCachesAroundPlayer();
-    console.log("Game state loaded:", gameState);
+    console.log("Game state loaded.");
   } else {
     console.log("No saved game state found.");
   }
@@ -402,6 +405,16 @@ function loadGameState() {
 
 // Manually load the game state when needed
 loadGameState();
+
+// When player moves
+map.on("moveend", () => {
+  saveGameState(); // Save the state after player moves
+});
+
+// When coin is collected or deposited
+document.querySelector("#collect")?.addEventListener("click", () => {
+  saveGameState(); // Save game state when coin is collected
+});
 
 // Event listeners for movement buttons
 // Move North button
@@ -457,6 +470,8 @@ document.getElementById("reset")?.addEventListener("click", () => {
   movementHistory.length = 0;
   movementPolyline.setLatLngs(movementHistory);
   cacheMementoManager.clear();
+  player.inventory = [];
+  updateInventoryDisplay();
 
   // Reset player position to starting location
   updatePlayerLocation(config.startLocation.lat, config.startLocation.lng);
