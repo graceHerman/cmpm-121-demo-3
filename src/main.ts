@@ -76,6 +76,7 @@ const map = initializeMap();
 const player = {
   marker: leaflet.marker(config.startLocation),
   coinsCollected: 0,
+  inventory: [] as { serial: number; location: string }[], // Inventory
 };
 
 // Set up player marker and display
@@ -275,14 +276,21 @@ function spawnCache(lat: number, lng: number) {
         const collectedCoin = coins.shift(); // Remove the first coin (top coin)
         if (collectedCoin) {
           player.coinsCollected++;
+          // Add coin to inventory with cache location
+          player.inventory.push({
+            serial: collectedCoin.serial,
+            location: `(${collectedCoin.i}, ${collectedCoin.j})`,
+          });
+
           updateCoinsDisplay(player.coinsCollected);
           updateCacheValueDisplay(cacheValue);
 
-          // Update coin list in the UI
+          // Update the coin list display in the UI
           updateCoinListDisplay();
+          // Update inventory display
+          updateInventoryDisplay();
 
           console.log(`Collected coin:`, collectedCoin);
-          // Save updated cache state
           saveCacheState(i, j, cacheValue);
         }
       }
@@ -312,6 +320,18 @@ function spawnCache(lat: number, lng: number) {
 
     return popupContent;
   });
+}
+
+// Function to update the inventory display
+function updateInventoryDisplay() {
+  const inventoryPanel = document.querySelector<HTMLDivElement>(
+    "#inventoryPanel",
+  )!;
+
+  // Display the inventory list
+  inventoryPanel.innerHTML = `<h3>Inventory</h3>` + player.inventory.map(
+    (item) => `<div>${item.location} #${item.serial}</div>`,
+  ).join("");
 }
 
 // Function to save the game state into a local storage
